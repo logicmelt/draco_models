@@ -62,6 +62,7 @@ class InfluxDB:
         if isinstance(columns_out, str):
             columns_out = [columns_out]
         output = defaultdict(list)
+        timestamps = []
         for k in input_dat:
             for n in k.records:
                 if n["_field"] not in columns_in and columns_in[0] != "":
@@ -69,5 +70,16 @@ class InfluxDB:
                 # Exclude columns if specified
                 if n["_field"] in columns_out:
                     continue
+                if n["_time"] not in timestamps:
+                    timestamps.append(n["_time"])
+                # timestamps[n["_field"]].append(n["_time"].timestamp())
                 output[n["_field"]].append(n["_value"])
+        # Transform the datetime objects to real timestamps
+        timestamps_out = [t.timestamp() for t in timestamps]
+        # Sanity check: ensure that the number of timestamps matches the number of values in the output
+        assert len(timestamps_out) == len(
+            output[list(output.keys())[0]]
+        ), "The number of timestamps does not match the number of values in the output."
+        # And add it to the output
+        output["timestamps"] = timestamps_out
         return output

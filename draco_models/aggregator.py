@@ -10,6 +10,8 @@ class Aggregator(object):
         """
         Initialize the Aggregator class.
         This class will be used to aggregate data from an InfluxDB instance covering the desired time range.
+
+        See the documentation for more detailes about the keys in the data dictionary.
         """
         super().__init__()
 
@@ -28,7 +30,7 @@ class Aggregator(object):
 
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
         output_aggregate["mean_azimuth"] = np.mean(data["phi[rad]"]).item()
-        output_aggregate["variance_azimuth"] = np.var(data["phi[rad]"], ddof = 1).item()
+        output_aggregate["variance_azimuth"] = np.std(data["phi[rad]"], ddof = 1).item()
         output_aggregate["skewness_azimuth"] = scipy.stats.skew(
             data["phi[rad]"]
         ).item()
@@ -38,7 +40,7 @@ class Aggregator(object):
 
         # Get the mean, standard deviation, kurtosis and skewness of the zenithal angle
         output_aggregate["mean_zenith"] = np.mean(data["theta[rad]"]).item()
-        output_aggregate["variance_zenith"] = np.var(data["theta[rad]"], ddof = 1).item()
+        output_aggregate["variance_zenith"] = np.std(data["theta[rad]"], ddof = 1).item()
         output_aggregate["skewness_zenith"] = scipy.stats.skew(
             data["theta[rad]"]
         ).item()
@@ -58,7 +60,7 @@ class Aggregator(object):
         """Get the average multiplicity of the particles.
 
         Args:
-            data (dict[str, Any]): Data from an influx database including "EventID" and "process_id" keys.
+            data (dict[str, Any]): Data from an influx database including "EventID" and "process_ID" keys.
 
         Returns:
             np.float64: The average multiplicity of the particles.

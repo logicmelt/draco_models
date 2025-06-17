@@ -1,0 +1,9 @@
+influxdb:
+  # url: http://localhost:8086
+  # token: logicmelt
+  # org: logicmelt
+  columns_in: ["EventID", "process_ID", "phi[rad]", "theta[rad]", "density_day_idx"]
+  #columns_out: ""
+
+time_resolution: 10 # seconds
+density_profile: additional_files/density_temp_height.json
