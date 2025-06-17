@@ -2,21 +2,20 @@ import influxdb_client
 import influxdb_client.client.flux_table
 from typing import Any
 from collections import defaultdict
+from draco_models.config import InfluxDBConfig
 
 
 # InfluxDB is not typed correctly https://github.com/influxdata/influxdb-client-python/issues/694
 class InfluxDB:
-    def __init__(self, url: str, token: str, org: str):
+    def __init__(self, config: InfluxDBConfig):
         """
         Initialize the InfluxDB client.
 
         Args:
-            url (str): The URL of the InfluxDB instance.
-            token (str): The authentication token for the InfluxDB instance.
-            org (str): The organization name in InfluxDB.
+            config (InfluxDBConfig): Configuration for connecting to the InfluxDB instance.
         """
-        self.client = influxdb_client.InfluxDBClient(url=url, token=token, org=org)  # type: ignore
-        self.org = org
+        self.client = influxdb_client.InfluxDBClient(url=config.url, token=config.token, org=config.org)  # type: ignore
+        self.org = config.org
         self.query_apy = self.client.query_api()
 
     def custom_query(
@@ -76,10 +75,13 @@ class InfluxDB:
                 output[n["_field"]].append(n["_value"])
         # Transform the datetime objects to real timestamps
         timestamps_out = [t.timestamp() for t in timestamps]
+        output_len = len(output[list(output.keys())[0]]) if len(output) > 0 else 0
         # Sanity check: ensure that the number of timestamps matches the number of values in the output
-        assert len(timestamps_out) == len(
-            output[list(output.keys())[0]]
+        assert (
+            len(timestamps_out) == output_len
         ), "The number of timestamps does not match the number of values in the output."
+        if output_len == 0:
+            return {}
         # And add it to the output
         output["timestamps"] = timestamps_out
         return output

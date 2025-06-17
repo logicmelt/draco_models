@@ -56,7 +56,7 @@ class InputConfig(pydantic.BaseModel):
         description="Configuration for connecting to the InfluxDB instance.",
     )
     query: str = pydantic.Field(
-        default='from(bucket: "logicmelt") |> range(start: -365d)\
+        default='from(bucket: "logicmelt") |> range(start: -10d)\
         |> filter(fn: (r) => r["_measurement"] == "particle")',
         description="The Flux query to execute against the InfluxDB instance.",
     )

@@ -30,17 +30,15 @@ class Aggregator(object):
 
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
         output_aggregate["mean_azimuth"] = np.mean(data["phi[rad]"]).item()
-        output_aggregate["variance_azimuth"] = np.std(data["phi[rad]"], ddof = 1).item()
-        output_aggregate["skewness_azimuth"] = scipy.stats.skew(
-            data["phi[rad]"]
-        ).item()
+        output_aggregate["variance_azimuth"] = np.std(data["phi[rad]"], ddof=1).item()
+        output_aggregate["skewness_azimuth"] = scipy.stats.skew(data["phi[rad]"]).item()
         output_aggregate["kurtosis_azimuth"] = scipy.stats.kurtosis(
             data["phi[rad]"]
         ).item()
 
         # Get the mean, standard deviation, kurtosis and skewness of the zenithal angle
         output_aggregate["mean_zenith"] = np.mean(data["theta[rad]"]).item()
-        output_aggregate["variance_zenith"] = np.std(data["theta[rad]"], ddof = 1).item()
+        output_aggregate["variance_zenith"] = np.std(data["theta[rad]"], ddof=1).item()
         output_aggregate["skewness_zenith"] = scipy.stats.skew(
             data["theta[rad]"]
         ).item()
@@ -52,7 +50,9 @@ class Aggregator(object):
         output_aggregate["n_readings"] = len(data["EventID"])
 
         # And last, the density_day_idx so that we can know which density profile was used
-        output_aggregate["density_day_idx"] = np.unique(data["density_day_idx"]).tolist()
+        output_aggregate["density_day_idx"] = np.unique(
+            data["density_day_idx"]
+        ).tolist()
 
         return output_aggregate
 
