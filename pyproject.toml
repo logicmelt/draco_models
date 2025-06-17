@@ -1,0 +1,24 @@
+[project]
+name = "draco-models"
+version = "0.1.0"
+description = "Machine learning models for anomaly detection and atmospheric temperature regression"
+authors = [
+    {name = "Alexis Menendez Vazquez",email = "alexis.menendez@logicmelt.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+dependencies = [
+    "numpy (>=2.3.0,<3.0.0)",
+    "matplotlib (>=3.10.3,<4.0.0)",
+    "scikit-learn (>=1.7.0,<2.0.0)",
+    "pydantic (>=2.11.5,<3.0.0)",
+    "datetime (>=5.5,<6.0)",
+    "pandas (>=2.3.0,<3.0.0)",
+    "h5py (>=3.14.0,<4.0.0)",
+    "influxdb-client (>=1.49.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
