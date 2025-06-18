@@ -1,0 +1,52 @@
+{
+    "influxdb": {
+        "url": "http://localhost:8086",
+        "token": "logicmelt",
+        "org": "logicmelt",
+        "columns_in": [
+            ""
+        ],
+        "columns_out": [
+            ""
+        ]
+    },
+    "query": "from(bucket: \"logicmelt\") |> range(start: -10d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")",
+    "time_resolution": 1.0,
+    "density_profile": "additional_files/density_temp_height.json",
+    "train_params": {
+        "scoring": ["r2", "neg_root_mean_squared_error"],
+        "cv": 5,
+        "n_iter": 100,
+        "refit": "neg_root_mean_squared_error",
+        "train_split": 0.8
+    },
+    "model": {
+        "KNeighborsRegressor": {
+            "KNeighborsRegressor__n_neighbors": "Range(2, 21, 1)",
+            "KNeighborsRegressor__weights": ["uniform", "distance"],
+            "KNeighborsRegressor__algorithm": ["ball_tree", "kd_tree", "brute"],
+            "KNeighborsRegressor__leaf_size": "Range(5, 205, 5)",
+            "KNeighborsRegressor__metric": ["euclidean", "chebyshev", "minkowski"],
+            "KNeighborsRegressor__p": [1,2]
+        },
+        "SVR": {
+            "SVR__C": "Range(1, 51, 1)",
+            "SVR__kernel": ["rbf", "sigmoid"],
+            "SVR__degree": "Range(0, 20, 1)",
+            "SVR__gamma": "Range(0, 3.1, 0.1)",
+            "SVR__coef0": "Range(0, 3.1, 0.1)"
+        },
+        "RandomForestRegressor": {
+            "RandomForestRegressor__n_estimators": "Range(10, 100, 1)",
+            "RandomForestRegressor__max_depth": "Range(2, 10, 1)",
+            "RandomForestRegressor__max_features": ["sqrt", "log2", 11],
+            "RandomForestRegressor__criterion": [
+                "squared_error",
+                "friedman_mse",
+                "absolute_error",
+                "poisson"
+            ],
+            "RandomForestRegressor__max_samples": [0.1, 0.2, 0.5]
+        }
+    }
+}

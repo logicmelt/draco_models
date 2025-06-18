@@ -26,7 +26,7 @@ class Aggregator(object):
         """
         output_aggregate: dict[str, Any] = {}
 
-        output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
+        # output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
 
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
         output_aggregate["mean_azimuth"] = np.mean(data["phi[rad]"]).item()
@@ -50,9 +50,12 @@ class Aggregator(object):
         output_aggregate["n_readings"] = len(data["EventID"])
 
         # And last, the density_day_idx so that we can know which density profile was used
-        output_aggregate["density_day_idx"] = np.unique(
-            data["density_day_idx"]
-        ).tolist()
+        density_idx = np.unique(data["density_day_idx"]).tolist()
+        assert len(density_idx) == 1, (
+            "There should be only one density_day_idx in the data. "
+            "If you are using more than one density profile, please choose a lower time resolution so that they are separated."
+        )
+        output_aggregate["density_day_idx"] = density_idx[0]
 
         return output_aggregate
 
