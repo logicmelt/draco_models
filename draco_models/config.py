@@ -40,8 +40,24 @@ def load_config_with_default(config_file: str | pathlib.Path) -> dict[str, Any]:
     config = load_config(config_file)
     default_config = load_config("draco_models/default_config/default.json")
     # Update default_config with the loaded config
-    default_config.update(config)
+    default_config = deep_update(default_config, config)
     return default_config
+
+
+def deep_update(original: dict[str, Any], update: dict[str, Any]) -> dict[str, Any]:
+    """Recursively update a dictionary with another dictionary.
+    Args:
+        original (dict[str, Any]): The original dictionary to be updated.
+        update (dict[str, Any]): The dictionary with updates.
+    Returns:
+        dict[str, Any]: The updated dictionary.
+    """
+    for key, value in update.items():
+        if isinstance(value, dict):
+            original[key] = deep_update(original.get(key, {}), value)
+        else:
+            original[key] = value
+    return original
 
 
 class InfluxDBConfig(pydantic.BaseModel):
@@ -134,7 +150,9 @@ class InputConfig(pydantic.BaseModel):
                     # Use regex to extract the Range parameters
                     match: list[str] = re.findall(r"[-+]?(?:\d*\.*\d+)", param_value)
                     # Get them as floats
-                    match_nums = [float(x) if x.find(".") > -1 else int(x) for x in match]
+                    match_nums = [
+                        float(x) if x.find(".") > -1 else int(x) for x in match
+                    ]
                     # Create the numpy range
                     parsed_dat = np.arange(*match_nums)
                     # Update the parameter value

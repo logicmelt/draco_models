@@ -6,6 +6,7 @@ from typing import Any
 import pathlib
 import numpy as np
 
+#TODO: Add different scalers to the pipelines
 
 class Job:
     """Job class to handle the data processing and model training pipeline."""
