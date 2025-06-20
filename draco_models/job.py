@@ -6,7 +6,8 @@ from typing import Any
 import pathlib
 import numpy as np
 
-#TODO: Add different scalers to the pipelines
+# TODO: Add different scalers to the pipelines
+
 
 class Job:
     """Job class to handle the data processing and model training pipeline."""
@@ -128,9 +129,6 @@ class Job:
         out_models = {}
         predict = {"temp": {}, "density": {}}
         for alt in self.pipelines.keys():
-            if alt != 0.24:
-                # Skip altitudes that are not 0.2 km
-                continue
             if alt not in out_models.keys():
                 out_models[alt] = {}
             for target in self.pipelines[alt].keys():
