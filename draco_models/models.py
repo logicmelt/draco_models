@@ -43,6 +43,7 @@ def pipeline_factory(config: InputConfig) -> dict[str, Any]:
         search = RandomizedSearchCV(
             pipeline,
             model_params,
+            n_jobs=config.train_params.n_jobs,
             scoring=config.train_params.scoring,
             refit=config.train_params.refit,
             n_iter=config.train_params.n_iter,

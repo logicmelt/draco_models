@@ -18,7 +18,8 @@
         "cv": 5,
         "n_iter": 100,
         "refit": "neg_root_mean_squared_error",
-        "train_split": 0.8
+        "train_split": 0.8,
+        "n_jobs": 5
     },
     "model": {
         "KNeighborsRegressor": {

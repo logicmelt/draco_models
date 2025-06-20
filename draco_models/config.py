@@ -105,6 +105,10 @@ class TrainConfig(pydantic.BaseModel):
         default=0.8,
         description="Fraction of the data to use for training. The rest will be used for testing.",
     )
+    n_jobs: int = pydantic.Field(
+        default=1,
+        description="Number of jobs to run in parallel for the training pipeline. -1 means using all processors.",
+    )
 
 
 class InputConfig(pydantic.BaseModel):
