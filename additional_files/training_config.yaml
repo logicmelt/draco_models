@@ -1,9 +1,29 @@
-influxdb:
+# influxdb:
   # url: http://localhost:8086
   # token: logicmelt
   # org: logicmelt
-  columns_in: ["EventID", "process_ID", "phi[rad]", "theta[rad]", "density_day_idx"]
+  # columns_in: ["EventID", "process_ID", "phi[rad]", "theta[rad]", "density_day_idx"]
   #columns_out: ""
-
-time_resolution: 60 # seconds
+aggregator:
+  type: "aggregated"
+  time_resolution: 60 # seconds
+  data_map: # Mapping of data columns to their names 
+    density_day_idx: "density_day_idx"
+    mean_azimuth: "mean_azimuth"
+    mean_zenith: "mean_zenith"
+    std_azimuth: "std_azimuth"
+    std_zenith: "std_zenith"
+    kurtosis_azimuth: "kurtosis_azimuth"
+    kurtosis_zenith: "kurtosis_zenith"
+    skewness_azimuth: "skewness_azimuth"
+    skewness_zenith: "skewness_zenith"
+    n_readings: "total_pcles"
+    multiplicity: "multiplicity"
+    # phi: "phi[rad]"
+    # theta: "theta[rad]"
+    # density_day_idx: "density_day_idx"
+    # eventid: "EventID"
+    # process_id: "process_ID"
+train_params:
+  n_jobs: -1
 density_profile: additional_files/density_temp_height.json

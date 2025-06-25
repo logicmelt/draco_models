@@ -1,6 +1,6 @@
 from draco_models.config import InputConfig, load_config
 from draco_models.influx import InfluxDB
-from draco_models.aggregator import Aggregator
+from draco_models.aggregator import Aggregator, IdentityAggregator
 from draco_models.models import pipeline_factory
 from typing import Any
 import pathlib
@@ -31,11 +31,16 @@ class Job:
         # Get the density profile file path
         self.atmo_prof = self.parse_density_prof(config.density_profile)
         # Define the aggregator to process the data
-        self.aggregator = Aggregator()
-        # Now, we have to aggregate the data in time_resolution steps
-        self.agg_data, self.target_idx = self.aggregate_time_resolution(
-            self.data, config.time_resolution
+        self.aggregator = Aggregator(
+            config.aggregator.data_map, config.aggregator.time_resolution
+        ) if config.aggregator.type == "raw" else IdentityAggregator(
+            config.aggregator.data_map
         )
+        # Now, we have to aggregate the data in time_resolution steps
+        self.agg_data, self.target_idx = self.aggregator.aggregate_time_resolution(
+            self.data
+        )
+
         # And now we can split the data into training and testing sets
         self.train_data, self.test_data = self.train_test_split(
             self.config.train_params.train_split
@@ -152,60 +157,6 @@ class Job:
                     predict[target][model_name] = pipeline.best_estimator_.predict(
                         self.test_data
                     )
-
-    def aggregate_time_resolution(
-        self, data: dict[str, list], time_resolution: float
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Aggregate the data in time resolution steps.
-
-        Args:
-            data (dict[str, list]): The data to be aggregated.
-            time_resolution (float): The time resolution in seconds.
-
-        Returns:
-            tuple[np.ndarray, np.ndarray]: A numpy array containing the aggregated data and the indices of the density profile used.
-        """
-        # Each aggregated step will cover time_resolution seconds.
-        start_time = data["timestamps"][0]  # Start from the first timestamp
-        time_arr = np.array(data["timestamps"])
-        output_data = []
-        target_idx = []
-        total_keys = 2  # Initialize total_keys to 2 to avoid reshape errors
-        while start_time < time_arr[-1]:
-            end_time = start_time + time_resolution
-            # Filter the data for the current time step
-            start_idx = np.argmax(start_time <= time_arr)
-            end_idx = np.argmin(time_arr < end_time)
-            if start_idx == end_idx or end_idx == 0:
-                # If no data is available for this time step, skip
-                start_time = end_time
-                continue
-            filtered_data = {
-                key: value[start_idx:end_idx]
-                for key, value in data.items()
-                if len(value[start_idx:end_idx]) > 0
-            }
-            # Aggregate the filtered data
-            aggregated_step = self.aggregator.aggregate(filtered_data)
-            total_keys = len(aggregated_step)
-            # Store the aggregated step
-            agg_list = []
-            for key, value in aggregated_step.items():
-                if key == "density_day_idx":
-                    # if the key is the density_day_idx we store the index separately
-                    target_idx.append(value)
-                    continue
-                agg_list.append(value)
-            # Append the aggregated step to the output data
-            output_data.append(agg_list)
-            # Move to the next time step
-            start_time = end_time
-        # Convert the output data to a numpy array for easier handling
-        # Substract 1 from total_keys to account for the density_day_idx
-        output_data = np.array(output_data).reshape(-1, total_keys - 1)
-        # Get the density_day_idx as array
-        target_idx = np.array(target_idx)
-        return output_data, target_idx
 
     def parse_density_prof(
         self, density_profile: str | pathlib.Path

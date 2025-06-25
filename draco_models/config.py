@@ -111,6 +111,29 @@ class TrainConfig(pydantic.BaseModel):
     )
 
 
+class AggregatorConfig(pydantic.BaseModel):
+    """Configuration for the data aggregator."""
+
+    type: str = pydantic.Field(
+        default="raw",
+        description="The type of aggregator to use. 'raw' for raw data aggregation, 'aggregated' for data already aggregated.",
+    )
+    time_resolution: float = pydantic.Field(
+        default=1.0,
+        description="The time resolution in seconds for the data aggregation.",
+    )
+    data_map: dict[str, str] = pydantic.Field(
+        default_factory=lambda: {
+            "eventid": "EventID",
+            "process_ID": "process_ID",
+            "phi": "phi[rad]",
+            "theta": "theta[rad]",
+            "density_day_idx": "density_day_idx",
+        },
+        description="Mapping of raw data fields to standardized names.",
+    )
+
+
 class InputConfig(pydantic.BaseModel):
     """Input configuration for the training pipeline."""
 
@@ -123,9 +146,9 @@ class InputConfig(pydantic.BaseModel):
         |> filter(fn: (r) => r["_measurement"] == "particle")',
         description="The Flux query to execute against the InfluxDB instance.",
     )
-    time_resolution: float = pydantic.Field(
-        default=1.0,
-        description="The time resolution in seconds for the data aggregation.",
+    aggregator: AggregatorConfig = pydantic.Field(
+        default_factory=AggregatorConfig,
+        description="Configuration for the data aggregator.",
     )
     density_profile: pathlib.Path = pydantic.Field(
         default=pathlib.Path("additional_files/density_temp_height.json"),

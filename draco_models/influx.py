@@ -71,7 +71,6 @@ class InfluxDB:
                     continue
                 if n["_time"] not in timestamps:
                     timestamps.append(n["_time"])
-                # timestamps[n["_field"]].append(n["_time"].timestamp())
                 output[n["_field"]].append(n["_value"])
         # Transform the datetime objects to real timestamps
         timestamps_out = [t.timestamp() for t in timestamps]

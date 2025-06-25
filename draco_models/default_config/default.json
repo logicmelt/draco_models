@@ -10,8 +10,7 @@
             ""
         ]
     },
-    "query": "from(bucket: \"logicmelt\") |> range(start: -10d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")",
-    "time_resolution": 1.0,
+    "query": "from(bucket: \"logicmelt\") |> range(start: -20d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")",
     "density_profile": "additional_files/density_temp_height.json",
     "train_params": {
         "scoring": ["r2", "neg_root_mean_squared_error"],
@@ -20,6 +19,17 @@
         "refit": "neg_root_mean_squared_error",
         "train_split": 0.8,
         "n_jobs": 5
+    },
+    "aggregator": {
+        "type": "raw",
+        "time_resolution": 1.0,
+        "data_map": {
+            "theta": "theta[rad]",
+            "phi": "phi[rad]",
+            "density_day_idx": "density_day_idx",
+            "eventid": "EventID",
+            "process_id": "process_ID"
+        }
     },
     "model": {
         "KNeighborsRegressor": {
