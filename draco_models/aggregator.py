@@ -7,16 +7,25 @@ from collections import Counter
 class IdentityAggregator(object):
     """A class that does not aggregate the data but returns it as is."""
 
-    def __init__(self, data_map: dict[str, str]):
+    def __init__(self):
         """
         Initialize the IdentityAggregator class.
         This class will be used to return the data as is without any aggregation.
-
-        Args:
-            data_map (dict[str, str]): A mapping of raw data fields to standardized names.
         """
         super().__init__()
-        self.data_map = data_map
+        # Relative order of the data in the output array.
+        self.data_order: dict[str, int] = {
+            "mean_azimuth": 0,
+            "std_azimuth": 1,
+            "skewness_azimuth": 2,
+            "kurtosis_azimuth": 3,
+            "mean_zenith": 4,
+            "std_zenith": 5,
+            "skewness_zenith": 6,
+            "kurtosis_zenith": 7,
+            "n_readings": 8,
+            "multiplicity": 9,
+        }
 
     def aggregate_time_resolution(
         self, data: dict[str, list[float | int]]
@@ -33,7 +42,6 @@ class IdentityAggregator(object):
         output_data = np.zeros((len(data["timestamps"]), len(data.keys()) - 2))
         # We will also store the density
         target_idx = np.zeros(len(data["timestamps"]), dtype=int)
-        idx = 0
         for key, val in data.items():
             if key == "timestamps":
                 # If the key is timestamps we skip it
@@ -43,14 +51,14 @@ class IdentityAggregator(object):
                 target_idx = np.array(val, dtype=int) - 1
                 continue
             # Store the data in the output array
-            output_data[:, idx] = np.array(val)
-            idx += 1
+            output_data[:, self.data_order[key]] = np.array(val)
+
         return output_data, target_idx
 
 
 class Aggregator(object):
 
-    def __init__(self, data_map: dict[str, str], time_resolution: float = 60.0):
+    def __init__(self, time_resolution: float = 60.0):
         """
         Initialize the Aggregator class.
         This class will be used to aggregate data from an InfluxDB instance covering the desired time range.
@@ -59,11 +67,22 @@ class Aggregator(object):
 
         Args:
             time_resolution (float): The time resolution in seconds for aggregating the data. Defaults to 60.0 seconds.
-            data_map (dict[str, str]): A mapping of raw data fields to standardized names.
         """
         super().__init__()
         self.time_resolution = time_resolution
-        self.data_map = data_map
+        # Relative order of the data in the output array.
+        self.data_order: dict[str, int] = {
+            "mean_azimuth": 0,
+            "std_azimuth": 1,
+            "skewness_azimuth": 2,
+            "kurtosis_azimuth": 3,
+            "mean_zenith": 4,
+            "std_zenith": 5,
+            "skewness_zenith": 6,
+            "kurtosis_zenith": 7,
+            "n_readings": 8,
+            "multiplicity": 9,
+        }
 
     def aggregate(self, data: dict[str, Any]) -> dict[str, Any]:
         """Aggregate the data. This method estimates the mean, stdev, kurtosis and skewness of several parameters.
@@ -76,36 +95,30 @@ class Aggregator(object):
         """
         output_aggregate: dict[str, Any] = {}
 
-        # output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
+        output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
-        output_aggregate["mean_azimuth"] = np.mean(data[self.data_map["phi"]]).item()
-        output_aggregate["std_azimuth"] = np.std(
-            data[self.data_map["phi"]], ddof=1
-        ).item()
-        output_aggregate["skewness_azimuth"] = scipy.stats.skew(
-            data[self.data_map["phi"]]
-        ).item()
+        output_aggregate["mean_azimuth"] = np.mean(data["phi[rad]"]).item()
+        output_aggregate["std_azimuth"] = np.std(data["phi[rad]"], ddof=1).item()
+        output_aggregate["skewness_azimuth"] = scipy.stats.skew(data["phi[rad]"]).item()
         output_aggregate["kurtosis_azimuth"] = scipy.stats.kurtosis(
-            data[self.data_map["phi"]]
+            data["phi[rad]"]
         ).item()
 
         # Get the mean, standard deviation, kurtosis and skewness of the zenithal angle
-        output_aggregate["mean_zenith"] = np.mean(data[self.data_map["theta"]]).item()
-        output_aggregate["std_zenith"] = np.std(
-            data[self.data_map["theta"]], ddof=1
-        ).item()
+        output_aggregate["mean_zenith"] = np.mean(data["theta[rad]"]).item()
+        output_aggregate["std_zenith"] = np.std(data["theta[rad]"], ddof=1).item()
         output_aggregate["skewness_zenith"] = scipy.stats.skew(
-            data[self.data_map["theta"]]
+            data["theta[rad]"]
         ).item()
         output_aggregate["kurtosis_zenith"] = scipy.stats.kurtosis(
-            data[self.data_map["theta"]]
+            data["theta[rad]"]
         ).item()
 
         # Get the total number of readings
-        output_aggregate["n_readings"] = len(data[self.data_map["eventid"]])
+        output_aggregate["n_readings"] = len(data["EventID"])
 
         # And last, the density_day_idx so that we can know which density profile was used
-        density_idx = np.unique(data[self.data_map["density_day_idx"]]).tolist()
+        density_idx = np.unique(data["density_day_idx"]).tolist()
         assert len(density_idx) == 1, (
             "There should be only one density_day_idx in the data. "
             "If you are using more than one density profile, please choose a lower time resolution so that they are separated."
@@ -154,12 +167,9 @@ class Aggregator(object):
             total_keys = len(aggregated_step)
             # Store the aggregated step
             agg_list = []
-            for key, value in aggregated_step.items():
-                if key == "density_day_idx":
-                    # if the key is the density_day_idx we store the index separately
-                    target_idx.append(value)
-                    continue
-                agg_list.append(value)
+            target_idx.append(aggregated_step["density_day_idx"])
+            for key in self.data_order.keys():
+                agg_list.append(aggregated_step[key])
             # Append the aggregated step to the output data
             output_data.append(agg_list)
             # Move to the next time step
@@ -182,8 +192,8 @@ class Aggregator(object):
         """
         # We need two columns: EventID and process_ID
         # If EventID is the same then it was generated by the same primary but we have to check that the process_ID is also the same
-        eventid = np.array(data[self.data_map["eventid"]])
-        processid = np.array(data[self.data_map["process_id"]])
+        eventid = np.array(data["EventID"])
+        processid = np.array(data["process_ID"])
         # Get the unique process_ID
         unique_process = np.unique(processid)
         # Now iterate and get the multiplicity of each process

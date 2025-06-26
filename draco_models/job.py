@@ -31,10 +31,10 @@ class Job:
         # Get the density profile file path
         self.atmo_prof = self.parse_density_prof(config.density_profile)
         # Define the aggregator to process the data
-        self.aggregator = Aggregator(
-            config.aggregator.data_map, config.aggregator.time_resolution
-        ) if config.aggregator.type == "raw" else IdentityAggregator(
-            config.aggregator.data_map
+        self.aggregator = (
+            Aggregator(config.aggregator.time_resolution)
+            if config.aggregator.type == "raw"
+            else IdentityAggregator()
         )
         # Now, we have to aggregate the data in time_resolution steps
         self.agg_data, self.target_idx = self.aggregator.aggregate_time_resolution(

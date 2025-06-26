@@ -22,14 +22,7 @@
     },
     "aggregator": {
         "type": "raw",
-        "time_resolution": 1.0,
-        "data_map": {
-            "theta": "theta[rad]",
-            "phi": "phi[rad]",
-            "density_day_idx": "density_day_idx",
-            "eventid": "EventID",
-            "process_id": "process_ID"
-        }
+        "time_resolution": 1.0
     },
     "model": {
         "KNeighborsRegressor": {
