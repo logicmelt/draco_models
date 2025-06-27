@@ -22,6 +22,8 @@ dependencies = [
     "skl2onnx (>=1.19.1,<2.0.0)",
 ]
 
+[tool.poetry.scripts]
+draco_trainer = "draco_models.main:cli_entrypoint"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
