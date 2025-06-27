@@ -1,5 +1,6 @@
 save_dir: test_data/onnx_models
 density_profile: additional_files/density_temp_height.json
+logging_level: DEBUG
 query: "from(bucket: \"logicmelt\") |> range(start: -20d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")"
 influxdb:
   url: http://localhost:8086

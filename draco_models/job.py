@@ -2,6 +2,7 @@ from draco_models.config import InputConfig, load_config
 from draco_models.influx import InfluxDB
 from draco_models.aggregator import Aggregator, IdentityAggregator
 from draco_models.models import pipeline_factory
+from draco_models.utils import create_logger
 from typing import Any
 from skl2onnx import to_onnx
 import pathlib
@@ -19,20 +20,32 @@ class Job:
         Args:
             config (InputConfig): The input configuration containing the parameters for the job.
         """
+        # Set variables and store the configuration
         self.train_idx: np.ndarray
         self.test_idx: np.ndarray
         self.config = config
+        # Set up logging
+        self.logger = create_logger(
+            "draco_trainer",
+            self.config.save_dir / "train_log.job",
+            self.config.logging_level,
+        )
         # Set up the job.
         # Get the data from InfluxDB using the provided query and columns.
         self.influxdb = InfluxDB(config.influxdb)
+        self.logger.info("Fetching data from InfluxDB...")
         self.data = self.influxdb.custom_query(
             config.query,
             config.influxdb.columns_in,
             config.influxdb.columns_out,
         )
+        self.logger.info("Data fetched successfully.")
         # Get the density profile file path
+        self.logger.info("Parsing density profile...")
         self.atmo_prof = self.parse_density_prof(config.density_profile)
+        self.logger.info("Density profile parsed successfully.")
         # Define the aggregator to process the data
+        self.logger.info(f"Setting up aggregator: {config.aggregator.type}")
         self.aggregator = (
             Aggregator(config.aggregator.time_resolution)
             if config.aggregator.type == "raw"
@@ -44,6 +57,7 @@ class Job:
         )
 
         # And now we can split the data into training and testing sets
+        self.logger.info("Splitting data into training and testing sets.")
         self.train_data, self.test_data = self.train_test_split(
             self.config.train_params.train_split
         )
@@ -52,6 +66,7 @@ class Job:
         self.test_arr = self.get_targets(self.test_idx)
         # Prepare the pipeline for training. This is a dictionary of pipelines
         # where the keys are the model names and the values are the pipelines.
+        self.logger.info("Preparing pipelines for training.")
         self.pipelines = self.get_models_all_targets()
 
     def get_models_all_targets(self) -> dict[float, dict[str, Any]]:
@@ -151,7 +166,7 @@ class Job:
                             "score": None,
                             "model": None,
                         }
-                    print(
+                    self.logger.info(
                         f"Training model: {model_name} for altitude {alt} and target {target}"
                     )
                     pipeline.fit(self.train_data, self.target_arr[alt][target])
@@ -175,6 +190,7 @@ class Job:
             models (dict[float, dict[str, dict[str, Any]]]): The trained models to export.
             output_dir (pathlib.Path): The directory where the models will be saved.
         """
+        self.logger.info("Exporting models to ONNX format...")
         output_dir = (
             pathlib.Path(output_dir) if isinstance(output_dir, str) else output_dir
         )
@@ -195,10 +211,15 @@ class Job:
                         output_path = output_dir / f"{model_name}_{alt}_{target}.onnx"
                         with open(output_path, "wb") as f:
                             f.write(onnx_model.SerializeToString())  # type: ignore
+                        self.logger.info(
+                            f"Model {model_name} for altitude {alt} and target {target} exported to {output_path}"
+                        )
                     except Exception as e:
-                        print(
+                        self.logger.error(
                             f"Error converting model {model_name} for altitude {alt} and target {target} to ONNX: {e}"
                         )
+                        self.logger.error("Skipping model.")
+                        # If there is an error, we log it and continue with the next model
                         continue
                     # Store the score
                     scores[str(alt)][target][model_name] = model_info["score"]

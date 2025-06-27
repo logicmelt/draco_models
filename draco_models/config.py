@@ -144,6 +144,10 @@ class InputConfig(BaseSettings):
         default_factory=InfluxDBConfig,
         description="Configuration for connecting to the InfluxDB instance.",
     )
+    logging_level: str = pydantic.Field(
+        default="INFO",
+        description="Logging level for the application. Options are: CRITICAL, FATAL, ERROR, WARNING, WARN, INFO, DEBUG, NOTSET.",
+    )
     query: str = pydantic.Field(
         default='from(bucket: "logicmelt") |> range(start: -10d)\
         |> filter(fn: (r) => r["_measurement"] == "particle")',

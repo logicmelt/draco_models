@@ -1,4 +1,4 @@
-This package reads data from an Influx database and parses it for training. The data should have at least the following keys:
+This package reads data from an Influx database and parses it for training. Raw data should have at least the following keys:
 
 + EventID: Integer that associates a muon to a source proton (From the simulation).
 + process_ID: Integer indicating which process generated the muon.
