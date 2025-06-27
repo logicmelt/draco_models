@@ -3,8 +3,10 @@ from draco_models.influx import InfluxDB
 from draco_models.aggregator import Aggregator, IdentityAggregator
 from draco_models.models import pipeline_factory
 from typing import Any
+from skl2onnx import to_onnx
 import pathlib
 import numpy as np
+import json
 
 # TODO: Add different scalers to the pipelines
 
@@ -113,9 +115,14 @@ class Job:
             tuple[np.ndarray, np.ndarray]: A tuple containing the training data and testing data.
         """
         # Get a list of random indices to shuffle the data
-        indices = np.random.default_rng().choice(
-            len(self.agg_data), len(self.agg_data), replace=False
-        )
+        if self.config.train_params.shuffle:
+            # If shuffle is True, we shuffle the data
+            indices = np.random.default_rng().choice(
+                len(self.agg_data), len(self.agg_data), replace=False
+            )
+        else:
+            # If shuffle is False, we just create a range of indices
+            indices = np.arange(len(self.agg_data))
         # Now, take the first `train_split` fraction of the indices for training
         split_idx = int(len(self.agg_data) * train_split)
         # Split and randomize the data
@@ -127,12 +134,11 @@ class Job:
         self.test_idx = self.target_idx[indices[split_idx:]]
         return train_data, test_data
 
-    def train(self):
+    def train(self) -> dict[float, dict[str, dict[str, Any]]]:
         """Train the models using the aggregated data."""
         # Iterate over the pipelines and fit them to the aggregated data
         # A model is trained for each altitude in the aggregated data
-        out_models = {}
-        predict = {"temp": {}, "density": {}}
+        out_models: dict[float, dict[str, dict[str, Any]]] = {}
         for alt in self.pipelines.keys():
             if alt not in out_models.keys():
                 out_models[alt] = {}
@@ -154,9 +160,58 @@ class Job:
                     out_models[alt][target][model_name][
                         "model"
                     ] = pipeline.best_estimator_
-                    predict[target][model_name] = pipeline.best_estimator_.predict(
-                        self.test_data
-                    )
+
+        # Return the trained models
+        return out_models
+
+    def export_models(
+        self,
+        models: dict[float, dict[str, dict[str, Any]]],
+        output_dir: pathlib.Path | str,
+    ) -> None:
+        """Export the trained models to ONNX format.
+
+        Args:
+            models (dict[float, dict[str, dict[str, Any]]]): The trained models to export.
+            output_dir (pathlib.Path): The directory where the models will be saved.
+        """
+        output_dir = (
+            pathlib.Path(output_dir) if isinstance(output_dir, str) else output_dir
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        scores: dict[str, dict[str, dict[str, float]]] = {}
+        for alt in models.keys():  # Altitudes
+            scores[str(alt)] = {}
+            for target in models[alt].keys():  # Targets (temp or density)
+                scores[str(alt)][target] = {}
+                for model_name, model_info in models[alt][target].items():
+                    # Convert the model to ONNX format
+                    try:
+                        onnx_model = to_onnx(
+                            model_info["model"],
+                            self.train_data.astype(np.float32),
+                        )
+                        # Save the ONNX model
+                        output_path = output_dir / f"{model_name}_{alt}_{target}.onnx"
+                        with open(output_path, "wb") as f:
+                            f.write(onnx_model.SerializeToString())  # type: ignore
+                    except Exception as e:
+                        print(
+                            f"Error converting model {model_name} for altitude {alt} and target {target} to ONNX: {e}"
+                        )
+                        continue
+                    # Store the score
+                    scores[str(alt)][target][model_name] = model_info["score"]
+        # Save the scores to a JSON file
+        scores_path = output_dir / "scores.json"
+        output: dict[str, Any] = {"scorer_function": self.config.train_params.refit}
+        output["scores"] = scores
+        with open(scores_path, "w") as f:
+            json.dump(output, f, indent=4)
+        # And the config used to train the models
+        config_path = output_dir / "config.json"
+        with open(config_path, "w") as f:
+            f.write(self.config.model_dump_json(indent=4))
 
     def parse_density_prof(
         self, density_profile: str | pathlib.Path

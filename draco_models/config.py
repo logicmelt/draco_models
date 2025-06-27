@@ -1,4 +1,10 @@
 import pydantic
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+    CliSettingsSource,
+)
 import pathlib
 import yaml
 import json
@@ -60,7 +66,7 @@ def deep_update(original: dict[str, Any], update: dict[str, Any]) -> dict[str, A
     return original
 
 
-class InfluxDBConfig(pydantic.BaseModel):
+class InfluxDBConfig(BaseSettings):
     """Configuration for connecting to an InfluxDB instance."""
 
     url: str = pydantic.Field(
@@ -82,7 +88,7 @@ class InfluxDBConfig(pydantic.BaseModel):
     )
 
 
-class TrainConfig(pydantic.BaseModel):
+class TrainConfig(BaseSettings):
     """Configuration for the training pipeline."""
 
     scoring: tuple[str, ...] = pydantic.Field(
@@ -109,9 +115,13 @@ class TrainConfig(pydantic.BaseModel):
         default=1,
         description="Number of jobs to run in parallel for the training pipeline. -1 means using all processors.",
     )
+    shuffle: bool = pydantic.Field(
+        default=False,
+        description="Whether to shuffle the data before splitting into training and testing sets.",
+    )
 
 
-class AggregatorConfig(pydantic.BaseModel):
+class AggregatorConfig(BaseSettings):
     """Configuration for the data aggregator."""
 
     type: str = pydantic.Field(
@@ -122,20 +132,13 @@ class AggregatorConfig(pydantic.BaseModel):
         default=1.0,
         description="The time resolution in seconds for the data aggregation.",
     )
-    data_map: dict[str, str] = pydantic.Field(
-        default_factory=lambda: {
-            "eventid": "EventID",
-            "process_ID": "process_ID",
-            "phi": "phi[rad]",
-            "theta": "theta[rad]",
-            "density_day_idx": "density_day_idx",
-        },
-        description="Mapping of raw data fields to standardized names.",
-    )
 
 
-class InputConfig(pydantic.BaseModel):
+class InputConfig(BaseSettings):
     """Input configuration for the training pipeline."""
+
+    # Allow the configuration to be parsed from the command line
+    model_config = SettingsConfigDict(cli_parse_args=True, env_nested_delimiter="__")
 
     influxdb: InfluxDBConfig = pydantic.Field(
         default_factory=InfluxDBConfig,
@@ -163,6 +166,24 @@ class InputConfig(pydantic.BaseModel):
         default_factory=TrainConfig,
         description="Configuration for the training pipeline.",
     )
+    save_dir: pathlib.Path = pydantic.Field(
+        description="Directory to save the output models and results.",
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            env_settings,
+            CliSettingsSource(settings_cls, cli_parse_args=True),
+            init_settings,
+        )
 
     @pydantic.field_validator("model", mode="before")
     @classmethod
@@ -184,4 +205,16 @@ class InputConfig(pydantic.BaseModel):
                     parsed_dat = np.arange(*match_nums)
                     # Update the parameter value
                     params[param_key] = parsed_dat
+        return value
+
+    @pydantic.field_serializer("model")
+    def serialize_model(
+        self, value: dict[str, dict[str, Any]]
+    ) -> dict[str, dict[str, Any]]:
+        """Serialize the model configuration to ensure that there are no numpy arrays."""
+        # Convert numpy arrays to lists for JSON serialization
+        for key, params in value.items():
+            for param_key, param_value in params.items():
+                if isinstance(param_value, np.ndarray):
+                    params[param_key] = param_value.tolist()
         return value

@@ -97,21 +97,21 @@ class Aggregator(object):
 
         output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
-        output_aggregate["mean_azimuth"] = np.mean(data["phi[rad]"]).item()
-        output_aggregate["std_azimuth"] = np.std(data["phi[rad]"], ddof=1).item()
-        output_aggregate["skewness_azimuth"] = scipy.stats.skew(data["phi[rad]"]).item()
+        output_aggregate["mean_azimuth"] = np.mean(data["phi"]).item()
+        output_aggregate["std_azimuth"] = np.std(data["phi"], ddof=1).item()
+        output_aggregate["skewness_azimuth"] = scipy.stats.skew(data["phi"]).item()
         output_aggregate["kurtosis_azimuth"] = scipy.stats.kurtosis(
-            data["phi[rad]"]
+            data["phi"]
         ).item()
 
         # Get the mean, standard deviation, kurtosis and skewness of the zenithal angle
-        output_aggregate["mean_zenith"] = np.mean(data["theta[rad]"]).item()
-        output_aggregate["std_zenith"] = np.std(data["theta[rad]"], ddof=1).item()
+        output_aggregate["mean_zenith"] = np.mean(data["theta"]).item()
+        output_aggregate["std_zenith"] = np.std(data["theta"], ddof=1).item()
         output_aggregate["skewness_zenith"] = scipy.stats.skew(
-            data["theta[rad]"]
+            data["theta"]
         ).item()
         output_aggregate["kurtosis_zenith"] = scipy.stats.kurtosis(
-            data["theta[rad]"]
+            data["theta"]
         ).item()
 
         # Get the total number of readings
