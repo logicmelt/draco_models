@@ -100,19 +100,13 @@ class Aggregator(object):
         output_aggregate["mean_azimuth"] = np.mean(data["phi"]).item()
         output_aggregate["std_azimuth"] = np.std(data["phi"], ddof=1).item()
         output_aggregate["skewness_azimuth"] = scipy.stats.skew(data["phi"]).item()
-        output_aggregate["kurtosis_azimuth"] = scipy.stats.kurtosis(
-            data["phi"]
-        ).item()
+        output_aggregate["kurtosis_azimuth"] = scipy.stats.kurtosis(data["phi"]).item()
 
         # Get the mean, standard deviation, kurtosis and skewness of the zenithal angle
         output_aggregate["mean_zenith"] = np.mean(data["theta"]).item()
         output_aggregate["std_zenith"] = np.std(data["theta"], ddof=1).item()
-        output_aggregate["skewness_zenith"] = scipy.stats.skew(
-            data["theta"]
-        ).item()
-        output_aggregate["kurtosis_zenith"] = scipy.stats.kurtosis(
-            data["theta"]
-        ).item()
+        output_aggregate["skewness_zenith"] = scipy.stats.skew(data["theta"]).item()
+        output_aggregate["kurtosis_zenith"] = scipy.stats.kurtosis(data["theta"]).item()
 
         # Get the total number of readings
         output_aggregate["n_readings"] = len(data["EventID"])
@@ -147,7 +141,6 @@ class Aggregator(object):
         time_arr = np.array(data["timestamps"])
         output_data = []
         target_idx = []
-        total_keys = 2  # Initialize total_keys to 2 to avoid reshape errors
         while start_time < time_arr[-1]:
             end_time = start_time + time_resolution
             # Filter the data for the current time step
@@ -164,7 +157,6 @@ class Aggregator(object):
             }
             # Aggregate the filtered data
             aggregated_step = self.aggregate(filtered_data)
-            total_keys = len(aggregated_step)
             # Store the aggregated step
             agg_list = []
             target_idx.append(aggregated_step["density_day_idx"])
@@ -176,7 +168,7 @@ class Aggregator(object):
             start_time = time_arr[end_idx]
         # Convert the output data to a numpy array for easier handling
         # Substract 1 from total_keys to account for the density_day_idx
-        output_data = np.array(output_data).reshape(-1, total_keys - 1)
+        output_data = np.array(output_data).reshape(-1, len(self.data_order))
         # Get the density_day_idx as array
         target_idx = np.array(target_idx)
         return output_data, target_idx

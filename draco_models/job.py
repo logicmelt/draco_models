@@ -222,7 +222,7 @@ class Job:
                         # If there is an error, we log it and continue with the next model
                         continue
                     # Store the score
-                    scores[str(alt)][target][model_name] = model_info["score"]
+                    scores[str(alt)][target][f"{model_name}_{alt}_{target}"] = model_info["score"]
         # Save the scores to a JSON file
         scores_path = output_dir / "scores.json"
         output: dict[str, Any] = {"scorer_function": self.config.train_params.refit}
