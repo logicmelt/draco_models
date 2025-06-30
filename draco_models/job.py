@@ -170,8 +170,10 @@ class Job:
                         f"Training model: {model_name} for altitude {alt} and target {target}"
                     )
                     pipeline.fit(self.train_data, self.target_arr[alt][target])
-
-                    out_models[alt][target][model_name]["score"] = pipeline.best_score_
+                    best_score = pipeline.score(
+                        self.test_data, self.test_arr[alt][target]
+                    )  
+                    out_models[alt][target][model_name]["score"] = best_score
                     out_models[alt][target][model_name][
                         "model"
                     ] = pipeline.best_estimator_
