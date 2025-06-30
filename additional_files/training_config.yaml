@@ -15,7 +15,7 @@ train_params:
   n_jobs: -1
   scoring: ["r2", "neg_root_mean_squared_error"]
   cv: 5
-  n_iter: 10
+  n_iter: 100
   refit: "neg_root_mean_squared_error"
   train_split: 0.8
   shuffle: false
@@ -30,17 +30,16 @@ model:
   SVR:
     SVR__C: "Range(1, 51, 1)"
     SVR__kernel: ["rbf", "sigmoid"]
-    SVR__degree: "Range(0, 20, 1)"
+    SVR__degree: "Range(0, 51, 1)"
     SVR__gamma: "Range(0, 3.1, 0.1)"
     SVR__coef0: "Range(0, 3.1, 0.1)"
   RandomForestRegressor:
-    RandomForestRegressor__n_estimators: "Range(10, 100, 1)"
-    RandomForestRegressor__max_depth: "Range(2, 10, 1)"
-    RandomForestRegressor__max_features: ["sqrt", "log2", 11]
+    RandomForestRegressor__n_estimators: "Range(10, 200, 1)"
+    RandomForestRegressor__max_depth: "Range(2, 11, 1)"
+    RandomForestRegressor__max_features: ["sqrt", "log2"]
     RandomForestRegressor__criterion: [
       "squared_error",
       "friedman_mse",
       "absolute_error",
       "poisson"
     ]
-    RandomForestRegressor__max_samples: [0.1, 0.2, 0.5]

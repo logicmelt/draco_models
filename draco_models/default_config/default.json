@@ -44,16 +44,15 @@
             "SVR__coef0": "Range(0, 3.1, 0.1)"
         },
         "RandomForestRegressor": {
-            "RandomForestRegressor__n_estimators": "Range(10, 100, 1)",
-            "RandomForestRegressor__max_depth": "Range(2, 10, 1)",
-            "RandomForestRegressor__max_features": ["sqrt", "log2", 11],
+            "RandomForestRegressor__n_estimators": "Range(10, 200, 1)",
+            "RandomForestRegressor__max_depth": "Range(2, 11, 1)",
+            "RandomForestRegressor__max_features": ["sqrt", "log2"],
             "RandomForestRegressor__criterion": [
                 "squared_error",
                 "friedman_mse",
                 "absolute_error",
                 "poisson"
-            ],
-            "RandomForestRegressor__max_samples": [0.1, 0.2, 0.5]
+            ]
         }
     }
 }

@@ -2,10 +2,11 @@ from sklearn.svm import SVR
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import SGDRegressor
-from draco_models.config import InputConfig
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.base import BaseEstimator, TransformerMixin
+from draco_models.config import InputConfig
 from typing import Any
 
 AVAILABLE_MODELS = {
@@ -14,6 +15,32 @@ AVAILABLE_MODELS = {
     "SVR": SVR(),
     "SGDRegressor": SGDRegressor(),
 }
+
+
+class Scaler(BaseEstimator, TransformerMixin):
+    """Custom scaler implementation to integrate with pipeline"""
+
+    _options = {"standard": StandardScaler(), "minmax": MinMaxScaler(), "none": None}
+
+    def __init__(self, option: str = "none"):
+        self.option = option
+
+    def fit(self, x, y):
+        self.scaler = self.create_scaler()
+        self.is_fitted_ = True
+        if self.scaler is not None:
+            return self.scaler.fit(x, y)
+        else:
+            return self
+
+    def transform(self, X):
+        if self.scaler is not None:
+            return self.scaler.transform(X)
+        else:
+            return X
+
+    def create_scaler(self):
+        return self._options[self.option]
 
 
 def pipeline_factory(config: InputConfig) -> dict[str, Any]:
@@ -37,9 +64,8 @@ def pipeline_factory(config: InputConfig) -> dict[str, Any]:
         model_instance = AVAILABLE_MODELS[model_name]
 
         # Create a pipeline with the model
-        pipeline = Pipeline(
-            [("scaler", StandardScaler()), (model_name, model_instance)]
-        )
+        pipeline = Pipeline([("scaler", Scaler()), (model_name, model_instance)])
+        model_params.update({"scaler__option": ["minmax", "standard", "none"]})
         search = RandomizedSearchCV(
             pipeline,
             model_params,

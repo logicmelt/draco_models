@@ -170,13 +170,18 @@ class Job:
                         f"Training model: {model_name} for altitude {alt} and target {target}"
                     )
                     pipeline.fit(self.train_data, self.target_arr[alt][target])
-                    best_score = pipeline.score(
+                    best_est = pipeline.best_estimator_
+                    # Replace the custom scaler with the sklearn scaler (saved as attribute)
+                    if best_est.steps[0][1].option != "none":
+                        best_est.steps[0] = ("scaler", best_est.steps[0][1].scaler)
+                    else:
+                        best_est.steps.pop(0)  # Remove the scaler if it is None
+                    best_score = best_est.score(
                         self.test_data, self.test_arr[alt][target]
-                    )  
+                    )
+
                     out_models[alt][target][model_name]["score"] = best_score
-                    out_models[alt][target][model_name][
-                        "model"
-                    ] = pipeline.best_estimator_
+                    out_models[alt][target][model_name]["model"] = best_est
 
         # Return the trained models
         return out_models
@@ -224,7 +229,9 @@ class Job:
                         # If there is an error, we log it and continue with the next model
                         continue
                     # Store the score
-                    scores[str(alt)][target][f"{model_name}_{alt}_{target}"] = model_info["score"]
+                    scores[str(alt)][target][f"{model_name}_{alt}_{target}"] = (
+                        model_info["score"]
+                    )
         # Save the scores to a JSON file
         scores_path = output_dir / "scores.json"
         output: dict[str, Any] = {"scorer_function": self.config.train_params.refit}
