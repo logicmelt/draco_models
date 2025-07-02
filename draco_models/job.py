@@ -176,11 +176,10 @@ class Job:
                         best_est.steps[0] = ("scaler", best_est.steps[0][1].scaler)
                     else:
                         best_est.steps.pop(0)  # Remove the scaler if it is None
-                    best_score = best_est.score(
-                        self.test_data, self.test_arr[alt][target]
+                    self.logger.info(
+                        f"Model {model_name} trained with score: {pipeline.best_score_}"
                     )
-
-                    out_models[alt][target][model_name]["score"] = best_score
+                    out_models[alt][target][model_name]["score"] = pipeline.best_score_
                     out_models[alt][target][model_name]["model"] = best_est
 
         # Return the trained models

@@ -1,7 +1,7 @@
 save_dir: test_data/onnx_models
 density_profile: additional_files/density_temp_height.json
 logging_level: DEBUG
-query: "from(bucket: \"logicmelt\") |> range(start: -20d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")"
+query: "from(bucket: \"logicmelt\") |> range(start: -30d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")"
 influxdb:
   url: http://localhost:8086
   token: logicmelt
@@ -13,12 +13,12 @@ aggregator:
   time_resolution: 1 # seconds
 train_params:
   n_jobs: -1
-  scoring: ["r2", "neg_root_mean_squared_error"]
+  scoring: ["r2", "neg_mean_squared_error"]
   cv: 5
   n_iter: 100
-  refit: "neg_root_mean_squared_error"
+  refit: "neg_mean_squared_error"
   train_split: 0.8
-  shuffle: false
+  shuffle: true
 model:
   KNeighborsRegressor:
     KNeighborsRegressor__n_neighbors: "Range(2, 21, 1)"

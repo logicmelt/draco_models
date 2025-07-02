@@ -91,7 +91,7 @@ class InfluxDBConfig(BaseSettings):
 class TrainConfig(BaseSettings):
     """Configuration for the training pipeline."""
 
-    scoring: tuple[str, ...] = pydantic.Field(
+    scoring: tuple[str, ...] | str = pydantic.Field(
         default=("r2", "neg_root_mean_squared_error"),
         description="Tuple of scoring metrics to be used in the training pipeline from sklearn.",
     )
@@ -99,7 +99,7 @@ class TrainConfig(BaseSettings):
         default=100,
         description="Number of iterations for the randomized search in the training pipeline.",
     )
-    refit: str = pydantic.Field(
+    refit: str | bool = pydantic.Field(
         default="neg_root_mean_squared_error",
         description="The metric to refit the model on after the randomized search (Sklearn).",
     )
