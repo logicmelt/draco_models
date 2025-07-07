@@ -18,7 +18,7 @@ def main(input_config: InputConfig) -> None:
     models = job.train()
 
     # Export the models to ONNX format
-    job.export_models(models, input_config.save_dir)
+    job.export_models(models, job.run_dir)
 
 
 def cli_entrypoint():

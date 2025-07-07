@@ -2,7 +2,7 @@ from draco_models.config import InputConfig, load_config
 from draco_models.influx import InfluxDB
 from draco_models.aggregator import Aggregator, IdentityAggregator
 from draco_models.models import pipeline_factory
-from draco_models.utils import create_logger
+from draco_models.utils import create_logger, setup_run_dir
 from typing import Any
 from skl2onnx import to_onnx
 import pathlib
@@ -24,10 +24,12 @@ class Job:
         self.train_idx: np.ndarray
         self.test_idx: np.ndarray
         self.config = config
+        # Create output directory if it does not exist
+        self.run_dir = setup_run_dir(self.config.save_dir)
         # Set up logging
         self.logger = create_logger(
             "draco_trainer",
-            self.config.save_dir / "train_log.job",
+            self.run_dir / "train_log.job",
             self.config.logging_level,
         )
         # Set up the job.
@@ -181,7 +183,6 @@ class Job:
                     )
                     out_models[alt][target][model_name]["score"] = pipeline.best_score_
                     out_models[alt][target][model_name]["model"] = best_est
-
         # Return the trained models
         return out_models
 
@@ -201,11 +202,11 @@ class Job:
             pathlib.Path(output_dir) if isinstance(output_dir, str) else output_dir
         )
         output_dir.mkdir(parents=True, exist_ok=True)
-        scores: dict[str, dict[str, dict[str, float]]] = {}
+        scores: dict[str, dict[str, dict[str, list[float | str]]]] = {}
         for alt in models.keys():  # Altitudes
             scores[str(alt)] = {}
             for target in models[alt].keys():  # Targets (temp or density)
-                scores[str(alt)][target] = {}
+                scores[str(alt)][target] = {"scores": [], "models": []}
                 for model_name, model_info in models[alt][target].items():
                     # Convert the model to ONNX format
                     try:
@@ -228,19 +229,59 @@ class Job:
                         # If there is an error, we log it and continue with the next model
                         continue
                     # Store the score
-                    scores[str(alt)][target][f"{model_name}_{alt}_{target}"] = (
-                        model_info["score"]
+                    scores[str(alt)][target][f"scores"].append(model_info["score"])
+                    # And the path to the ONNX model
+                    scores[str(alt)][target][f"models"].append(
+                        str(output_path.relative_to(output_path.parent.parent))
                     )
         # Save the scores to a JSON file
-        scores_path = output_dir / "scores.json"
+        scores_path = output_dir.parent / "scores.json"
         output: dict[str, Any] = {"scorer_function": self.config.train_params.refit}
         output["scores"] = scores
+        # Check if the scores.json file already exists
+        if scores_path.exists():
+            # Read the json file
+            with open(scores_path, "r") as f:
+                existing_scores = json.load(f)
+            # Update the existing scores with the new ones
+            output = self.update_score_dict(existing_scores, output)
         with open(scores_path, "w") as f:
             json.dump(output, f, indent=4)
         # And the config used to train the models
         config_path = output_dir / "config.json"
         with open(config_path, "w") as f:
             f.write(self.config.model_dump_json(indent=4))
+
+    def update_score_dict(
+        self, original_data: dict[str, Any], new_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Update the scores dictionary in the JSON file with new data.
+
+        Args:
+            original_data (pathlib.Path): Original data loaded from the JSON file.
+            new_data (dict[str, Any]): New data to update the scores with.
+
+        Returns:
+            dict[str, Any]: Updated original data with new scores.
+        Raises:
+            KeyError: If the "scores" key is not present in the original data.
+        """
+        # We have to update the "scores" key in the original_data with the new_data
+        if "scores" not in original_data:
+            raise KeyError(
+                "The original data does not contain the 'scores' key. Cannot update scores."
+            )
+        # Iterate over the new data and update the original data
+        for alt, targets in new_data["scores"].items():
+            if alt not in original_data["scores"]:
+                original_data["scores"][alt] = {}
+            for target, models in targets.items():
+                if target not in original_data["scores"][alt]:
+                    original_data["scores"][alt][target] = {"scores": [], "models": []}
+                for name, score_list in models.items():
+                    # Update the scores and models
+                    original_data["scores"][alt][target][name].extend(score_list)
+        return original_data
 
     def parse_density_prof(
         self, density_profile: str | pathlib.Path
