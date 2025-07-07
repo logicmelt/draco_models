@@ -24,7 +24,7 @@ class IdentityAggregator(object):
             "skewness_zenith": 6,
             "kurtosis_zenith": 7,
             "n_readings": 8,
-            "multiplicity": 9,
+            # "multiplicity": 9,
         }
 
     def aggregate_time_resolution(
@@ -81,7 +81,7 @@ class Aggregator(object):
             "skewness_zenith": 6,
             "kurtosis_zenith": 7,
             "n_readings": 8,
-            "multiplicity": 9,
+            # "multiplicity": 9,
         }
 
     def aggregate(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -95,7 +95,7 @@ class Aggregator(object):
         """
         output_aggregate: dict[str, Any] = {}
 
-        output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
+        # output_aggregate["multiplicity"] = self.get_multiplicity(data).item()
         # Get the mean, standard deviation, kurtosis and skewness of the azimuthal angle
         output_aggregate["mean_azimuth"] = np.mean(data["phi"]).item()
         output_aggregate["std_azimuth"] = np.std(data["phi"], ddof=1).item()
