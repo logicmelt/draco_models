@@ -38,8 +38,7 @@ class IdentityAggregator(object):
         Returns:
             tuple[np.ndarray, np.ndarray]: A numpy array containing the parsed data and the indices of the density profile used.
         """
-        # Substract 2 from the length of the data.keys() to account for the timestamps and density_day_idx
-        output_data = np.zeros((len(data["timestamps"]), len(data.keys()) - 2))
+        output_data = np.zeros((len(data["timestamps"]), len(self.data_order)))
         # We will also store the density
         target_idx = np.zeros(len(data["timestamps"]), dtype=int)
         for key, val in data.items():
@@ -136,6 +135,11 @@ class Aggregator(object):
         time_resolution = (
             self.time_resolution if time_resolution is None else time_resolution
         )
+        if len(data) == 0:
+            # If the data is empty then the query returned no results
+            raise ValueError(
+                "The data is empty. The query returned no results. Please check the query and the InfluxDB instance."
+            )
         # Each aggregated step will cover time_resolution seconds.
         start_time = data["timestamps"][0]  # Start from the first timestamp
         time_arr = np.array(data["timestamps"])

@@ -1,5 +1,6 @@
 import influxdb_client
 import influxdb_client.client.flux_table
+import numpy as np
 from typing import Any
 from collections import defaultdict
 from draco_models.config import InfluxDBConfig
@@ -62,6 +63,9 @@ class InfluxDB:
             columns_out = [columns_out]
         output = defaultdict(list)
         timestamps = []
+        tags = (
+            set()
+        )  # To keep track of unique tags so that we have all the unique timestamps
         for k in input_dat:
             for n in k.records:
                 if n["_field"] not in columns_in and columns_in[0] != "":
@@ -69,7 +73,21 @@ class InfluxDB:
                 # Exclude columns if specified
                 if n["_field"] in columns_out:
                     continue
-                if n["_time"] not in timestamps:
+                if "particle_id" not in n.values.keys():
+                    # This key is only present in the real detectors
+                    iter_tag = (n["detector_id"], n["detector_type"], n["run_ID"])
+                else:
+                    iter_tag = (
+                        n["detector_id"],
+                        n["detector_type"],
+                        n["run_ID"],
+                        n["particle_id"],
+                    )
+                # If the tag (or the timestamp) is not in the set
+                # then we have a new entry and we add it
+                if iter_tag not in tags or n["_time"] not in timestamps:
+                    tags.add(iter_tag)
+                    # And the timestamp
                     timestamps.append(n["_time"])
                 output[n["_field"]].append(n["_value"])
         # Transform the datetime objects to real timestamps
@@ -81,6 +99,26 @@ class InfluxDB:
         ), "The number of timestamps does not match the number of values in the output."
         if output_len == 0:
             return {}
+        # Sort the timestamps if needed
+        if not self.is_sorted(timestamps_out):
+            index_sort = np.argsort(timestamps_out)
+            timestamps_out = [timestamps_out[i] for i in index_sort]
+            # Sort the output data according to the timestamps
+            for key in output.keys():
+                output[key] = [output[key][i] for i in index_sort]
         # And add it to the output
         output["timestamps"] = timestamps_out
         return output
+
+    def is_sorted(self, data: list[float | int]) -> np.bool:
+        """
+        Check if the data is sorted in ascending order.
+
+        Args:
+            data (list[float | int]): The data to check.
+
+        Returns:
+            bool: True if the data is sorted, False otherwise.
+        """
+        data_as_np = np.array(data)
+        return np.all(data_as_np[:-1] <= data_as_np[1:])
