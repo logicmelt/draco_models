@@ -76,7 +76,14 @@ class SaveHttpConfig(BaseSettings):
     url: str = pydantic.Field(
         description="The URL of the server to save the models to.",
     )
-
+    read_token: str = pydantic.Field(
+        default="logicmelt",
+        description="The authentication token to read from the server. It will be added to the request headers.",
+    )
+    write_token: str = pydantic.Field(
+        default="logicmelt",
+        description="The authentication token to write to the server. It will be added to the request headers.",
+    )
 
 class SaveLocalConfig(BaseSettings):
     """Configuration for saving models locally."""

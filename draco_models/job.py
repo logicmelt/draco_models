@@ -239,7 +239,10 @@ class Job:
         response = requests.put(
             url,
             data=serialized_model,
-            headers={"Content-Type": "application/octet-stream"},
+            headers={
+                "Content-Type": "application/octet-stream",
+                "Authorization": f"Bearer {output_config.write_token}",
+            },
         )
         if not response.ok:
             self.logger.error(
@@ -336,7 +339,10 @@ class Job:
             )
             score_files = requests.get(
                 score_path,
-                headers={"Accept": "application/json"},
+                headers={
+                    "Accept": "application/json",
+                    "Authorization": f"Bearer {output_config.read_token}",
+                },
             )
             if score_files.ok:
                 # If the file exists, we load it
@@ -347,7 +353,10 @@ class Job:
             response = requests.put(
                 score_path,
                 json=output,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {output_config.write_token}",
+                },
             )
             if not response.ok:
                 self.logger.error(
