@@ -1,4 +1,9 @@
-from draco_models.config import InputConfig, load_config
+from draco_models.config import (
+    InputConfig,
+    SaveHttpConfig,
+    SaveLocalConfig,
+    load_config,
+)
 from draco_models.influx import InfluxDB
 from draco_models.aggregator import Aggregator, IdentityAggregator
 from draco_models.models import pipeline_factory
@@ -8,8 +13,9 @@ from skl2onnx import to_onnx
 import pathlib
 import numpy as np
 import json
-
-# TODO: Add different scalers to the pipelines
+import hashlib
+import uuid
+import requests
 
 
 class Job:
@@ -24,14 +30,8 @@ class Job:
         self.train_idx: np.ndarray
         self.test_idx: np.ndarray
         self.config = config
-        # Create output directory if it does not exist
-        self.run_dir = setup_run_dir(self.config.save_dir)
         # Set up logging
-        self.logger = create_logger(
-            "draco_trainer",
-            self.run_dir / "train_log.job",
-            self.config.logging_level,
-        )
+        self.logger = create_logger("draco_trainer", self.config.logging)
         # Set up the job.
         # Get the data from InfluxDB using the provided query and columns.
         self.influxdb = InfluxDB(config.influxdb)
@@ -186,27 +186,95 @@ class Job:
         # Return the trained models
         return out_models
 
+    def export_models_local(
+        self,
+        onnx_model: Any,
+        model_name: str,
+        output_config: SaveLocalConfig,
+    ) -> str:
+        """Export the trained model to a local directory in ONNX format.
+
+        Args:
+            onnx_model (Any): The ONNX model to export.
+            model_name (str): The name of the model to export.
+            output_config (SaveLocalConfig): Configuration needed to save the model.
+
+        Returns:
+            str: The hash of the exported model.
+        """
+        serialized_model = onnx_model.SerializeToString()
+        # Calculate the hash of the model
+        model_hash = hashlib.sha256(serialized_model).hexdigest()
+        with open(output_config.save_dir / model_name, "wb") as f:
+            f.write(serialized_model)  # type: ignore
+        return model_hash
+
+    def export_models_http(
+        self,
+        onnx_model: Any,
+        model_name: str,
+        output_config: SaveHttpConfig,
+    ) -> str:
+        """Export the trained model to a HTTP server.
+
+        Args:
+            onnx_model (Any): The ONNX model to export.
+            model_name (str): The name of the model to export.
+            output_config (SaveHttpConfig): Configuration needed to save the model.
+
+        Returns:
+            str: The hash of the exported model.
+        """
+
+        serialized_model = onnx_model.SerializeToString()
+        # Calculate the hash of the model
+        model_hash = hashlib.sha256(serialized_model).hexdigest()
+        # Prepare the URL for the HTTP request
+        url = (
+            output_config.url + model_name
+            if output_config.url.endswith("/")
+            else output_config.url + "/" + model_name
+        )
+        # Send the model to the HTTP server
+        response = requests.put(
+            url,
+            data=serialized_model,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+        if not response.ok:
+            self.logger.error(
+                f"Error exporting model {model_name} to HTTP server: {response.text}"
+            )
+            raise Exception(f"Failed to export model {model_name} to HTTP server.")
+        return model_hash
+
     def export_models(
         self,
         models: dict[float, dict[str, dict[str, Any]]],
-        output_dir: pathlib.Path | str,
+        output_config: SaveLocalConfig | SaveHttpConfig,
     ) -> None:
         """Export the trained models to ONNX format.
 
         Args:
             models (dict[float, dict[str, dict[str, Any]]]): The trained models to export.
-            output_dir (pathlib.Path): The directory where the models will be saved.
+            output_config (SaveLocalConfig | SaveHttpConfig): Configuration needed to save the model.
         """
         self.logger.info("Exporting models to ONNX format...")
-        output_dir = (
-            pathlib.Path(output_dir) if isinstance(output_dir, str) else output_dir
-        )
-        output_dir.mkdir(parents=True, exist_ok=True)
+        if output_config.type == "local":
+            # If the output_dir is a local directory, we create it if it does not exist
+            output_dir = output_config.save_dir
+            # Create the directory if it does not exist
+            output_dir.mkdir(parents=True, exist_ok=True)
+            export_func = self.export_models_local
+        else:
+            output_dir = output_config.url
+            export_func = self.export_models_http
+
         scores: dict[str, dict[str, dict[str, list[float | str]]]] = {}
         for alt in models.keys():  # Altitudes
             scores[str(alt)] = {}
             for target in models[alt].keys():  # Targets (temp or density)
-                scores[str(alt)][target] = {"scores": [], "models": []}
+                scores[str(alt)][target] = {"scores": [], "models": [], "hash": []}
                 for model_name, model_info in models[alt][target].items():
                     # Convert the model to ONNX format
                     try:
@@ -215,11 +283,10 @@ class Job:
                             self.train_data.astype(np.float32),
                         )
                         # Save the ONNX model
-                        output_path = output_dir / f"{model_name}_{alt}_{target}.onnx"
-                        with open(output_path, "wb") as f:
-                            f.write(onnx_model.SerializeToString())  # type: ignore
+                        model_name = str(uuid.uuid4()) + ".onnx"
+                        hash = export_func(onnx_model, model_name, output_config)  # type: ignore
                         self.logger.info(
-                            f"Model {model_name} for altitude {alt} and target {target} exported to {output_path}"
+                            f"Model {model_name} for altitude {alt} and target {target} exported to {output_config.type}"
                         )
                     except Exception as e:
                         self.logger.error(
@@ -230,27 +297,63 @@ class Job:
                         continue
                     # Store the score
                     scores[str(alt)][target][f"scores"].append(model_info["score"])
-                    # And the path to the ONNX model
-                    scores[str(alt)][target][f"models"].append(
-                        str(output_path.relative_to(output_path.parent.parent))
-                    )
+                    # The path to the ONNX model
+                    scores[str(alt)][target][f"models"].append(model_name)
+                    # And the hash of the model
+                    scores[str(alt)][target][f"hash"].append(hash)
         # Save the scores to a JSON file
-        scores_path = output_dir.parent / "scores.json"
         output: dict[str, Any] = {"scorer_function": self.config.train_params.refit}
         output["scores"] = scores
-        # Check if the scores.json file already exists
-        if scores_path.exists():
-            # Read the json file
-            with open(scores_path, "r") as f:
-                existing_scores = json.load(f)
-            # Update the existing scores with the new ones
-            output = self.update_score_dict(existing_scores, output)
-        with open(scores_path, "w") as f:
-            json.dump(output, f, indent=4)
-        # And the config used to train the models
-        config_path = output_dir / "config.json"
-        with open(config_path, "w") as f:
-            f.write(self.config.model_dump_json(indent=4))
+        # Check if the scores.json file already exists in the server or local directory
+        if output_config.type == "local":
+            scores_path = (
+                output_dir / "scores.json"
+                if isinstance(output_dir, pathlib.Path)
+                else pathlib.Path(output_dir) / "scores.json"
+            )
+            if scores_path.exists():
+                # Read the json file
+                with open(scores_path, "r") as f:
+                    existing_scores = json.load(f)
+                output = self.update_score_dict(existing_scores, output)
+            # Write the updated scores to the JSON file
+            with open(scores_path, "w") as f:
+                json.dump(output, f, indent=4)
+            # And the config used to train the models
+            config_path = (
+                output_dir / "config.json"
+                if isinstance(output_dir, pathlib.Path)
+                else pathlib.Path(output_dir) / "config.json"
+            )
+            with open(config_path, "w") as f:
+                f.write(self.config.model_dump_json(indent=4))
+        else:
+            # If the output is a HTTP server we have to GET the scores.json file if it exists
+            score_path = (
+                output_config.url + "scores.json"
+                if output_config.url.endswith("/")
+                else output_config.url + "/scores.json"
+            )
+            score_files = requests.get(
+                score_path,
+                headers={"Accept": "application/json"},
+            )
+            if score_files.ok:
+                # If the file exists, we load it
+                existing_scores = score_files.json()
+                # Update the existing scores with the new ones
+                output = self.update_score_dict(existing_scores, output)
+            # Post the scores to the HTTP server
+            response = requests.put(
+                score_path,
+                json=output,
+                headers={"Content-Type": "application/json"},
+            )
+            if not response.ok:
+                self.logger.error(
+                    f"Error exporting scores to HTTP server: {response.text}"
+                )
+                raise Exception("Failed to export scores to HTTP server.")
 
     def update_score_dict(
         self, original_data: dict[str, Any], new_data: dict[str, Any]
@@ -277,7 +380,11 @@ class Job:
                 original_data["scores"][alt] = {}
             for target, models in targets.items():
                 if target not in original_data["scores"][alt]:
-                    original_data["scores"][alt][target] = {"scores": [], "models": []}
+                    original_data["scores"][alt][target] = {
+                        "scores": [],
+                        "models": [],
+                        "hash": [],
+                    }
                 for name, score_list in models.items():
                     # Update the scores and models
                     original_data["scores"][alt][target][name].extend(score_list)

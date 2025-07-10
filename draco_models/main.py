@@ -1,7 +1,7 @@
 import draco_models.job
 import argparse
 import sys
-from draco_models.config import load_config_with_default, InputConfig
+from draco_models.config import load_config, InputConfig
 
 
 def main(input_config: InputConfig) -> None:
@@ -18,7 +18,7 @@ def main(input_config: InputConfig) -> None:
     models = job.train()
 
     # Export the models to ONNX format
-    job.export_models(models, job.run_dir)
+    job.export_models(models, job.config.save_models)
 
 
 def cli_entrypoint():
@@ -40,8 +40,7 @@ def cli_entrypoint():
     # Remove --config from the list of arguments
     sys.argv = [sys.argv[0]] + unknown
     # Load the configuration from a YAML file with defaults
-    config = load_config_with_default(args.config)
-
+    config = load_config(args.config)
     # Validate the configuration
     input_config = InputConfig(**config)
     # Run the main function with the validated configuration

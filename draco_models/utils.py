@@ -1,6 +1,7 @@
 import logging
 import pathlib
 import sys
+from draco_models.config import LoggingConfig
 
 LOGGER_LEVEL: dict[str, int] = {
     "DEBUG": logging.DEBUG,
@@ -11,22 +12,19 @@ LOGGER_LEVEL: dict[str, int] = {
 }
 
 
-def create_logger(
-    name: str, log_file: str | pathlib.Path, level: str = "INFO"
-) -> logging.Logger:
+def create_logger(name: str, log_config: LoggingConfig) -> logging.Logger:
     """
     Create a logger with the given name and log file.
 
     Args:
         name (str): The name of the logger.
-        log_file (str | pathlib.Path): Path to the log file.
-        level (str): The logging level ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]. Defaults to "INFO".
+        log_config (LoggingConfig): Configuration for logging, including level and output file.
 
     Returns:
         logging.Logger: The logger instance.
     """
     # Get the logging level
-    level_log = LOGGER_LEVEL[level]
+    level_log = LOGGER_LEVEL[log_config.logging_level.upper()]
     # Create the logger and set it to the desired level
     logger = logging.getLogger(name)
     logger.setLevel(level_log)
@@ -34,13 +32,26 @@ def create_logger(
     FORMAT = logging.Formatter(
         "%(asctime)s - %(filename)s->%(funcName)s():%(lineno)s - [%(levelname)s] - %(message)s"
     )
-    file_handler = logging.FileHandler(log_file, mode="w", encoding=None, delay=False)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(FORMAT)
-    file_handler.setFormatter(FORMAT)
-    # Add the handlers to the logger
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)  # Add console handler
+    if not log_config.enabled:
+        logger.propagate = False
+        return logger
+
+    if log_config.console:
+        # If console logging is enabled, set up a console handler
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(FORMAT)
+        logger.addHandler(console_handler)
+    # If file logging is enabled, set up a file handler
+    if log_config.file:
+        # Create the log directory if it does not exist
+        log_file = log_config.log_output / f"{name}.log"
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        # Create a file handler with the specified log file
+        file_handler = logging.FileHandler(
+            log_file, mode="w", encoding=None, delay=False
+        )
+        file_handler.setFormatter(FORMAT)
+        logger.addHandler(file_handler)
     # Return the logger
     return logger
 

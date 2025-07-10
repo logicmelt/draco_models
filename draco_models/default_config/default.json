@@ -10,8 +10,15 @@
             ""
         ]
     },
-    "logging_level": "DEBUG",
-    "save_dir": "./data/",
+    "logging": {
+        "enabled": true,
+        "console": true,
+        "file": false
+    },
+    "save_models": {
+        "type": "local",
+        "save_dir": "."
+    },
     "query": "from(bucket: \"logicmelt\") |> range(start: -20d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")",
     "density_profile": "additional_files/density_temp_height.json",
     "train_params": {

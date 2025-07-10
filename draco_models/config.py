@@ -10,7 +10,7 @@ import yaml
 import json
 import numpy as np
 import re
-from typing import Any
+from typing import Any, Literal
 
 
 def load_config(config_file: str | pathlib.Path) -> dict[str, Any]:
@@ -64,6 +64,31 @@ def deep_update(original: dict[str, Any], update: dict[str, Any]) -> dict[str, A
         else:
             original[key] = value
     return original
+
+
+class SaveHttpConfig(BaseSettings):
+    """Configuration for saving models."""
+
+    type: Literal["HTTPServer"] = pydantic.Field(
+        default="HTTPServer",
+        description="The type of model saving mechanism to use.",
+    )
+    url: str = pydantic.Field(
+        description="The URL of the server to save the models to.",
+    )
+
+
+class SaveLocalConfig(BaseSettings):
+    """Configuration for saving models locally."""
+
+    type: Literal["local"] = pydantic.Field(
+        default="local",
+        description="The type of model saving mechanism to use.",
+    )
+    save_dir: pathlib.Path = pydantic.Field(
+        default=pathlib.Path("."),
+        description="Directory to save the output models and results.",
+    )
 
 
 class InfluxDBConfig(BaseSettings):
@@ -134,19 +159,41 @@ class AggregatorConfig(BaseSettings):
     )
 
 
+class LoggingConfig(BaseSettings):
+    enabled: bool = pydantic.Field(
+        default=True,
+        description="Whether to enable logging.",
+    )
+    console: bool = pydantic.Field(
+        default=True,
+        description="Whether to log to the console.",
+    )
+    file: bool = pydantic.Field(
+        default=False,
+        description="Whether to log to a file.",
+    )
+    logging_level: str = pydantic.Field(
+        default="INFO",
+        description="Logging level for the application. Options are: CRITICAL, FATAL, ERROR, WARNING, WARN, INFO, DEBUG, NOTSET.",
+    )
+    log_output: pathlib.Path = pydantic.Field(
+        default=pathlib.Path("./data/logs/"),
+        description="Directory to save the output logs.",
+    )
+
+
 class InputConfig(BaseSettings):
     """Input configuration for the training pipeline."""
 
     # Allow the configuration to be parsed from the command line
     model_config = SettingsConfigDict(cli_parse_args=True, env_nested_delimiter="__")
-
+    logging: LoggingConfig = pydantic.Field(
+        default_factory=LoggingConfig,
+        description="Configuration for the logging system.",
+    )
     influxdb: InfluxDBConfig = pydantic.Field(
         default_factory=InfluxDBConfig,
         description="Configuration for connecting to the InfluxDB instance.",
-    )
-    logging_level: str = pydantic.Field(
-        default="INFO",
-        description="Logging level for the application. Options are: CRITICAL, FATAL, ERROR, WARNING, WARN, INFO, DEBUG, NOTSET.",
     )
     query: str = pydantic.Field(
         default='from(bucket: "logicmelt") |> range(start: -10d)\
@@ -170,8 +217,10 @@ class InputConfig(BaseSettings):
         default_factory=TrainConfig,
         description="Configuration for the training pipeline.",
     )
-    save_dir: pathlib.Path = pydantic.Field(
-        description="Directory to save the output models and results.",
+    save_models: SaveHttpConfig | SaveLocalConfig = pydantic.Field(
+        default_factory=SaveLocalConfig,
+        discriminator="type",
+        description="Configuration for saving models the models either locally or to a http server.",
     )
 
     @classmethod
