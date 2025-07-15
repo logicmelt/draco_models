@@ -117,7 +117,10 @@ class Aggregator(object):
             "If you are using more than one density profile, please choose a lower time resolution so that they are separated."
         )
         output_aggregate["density_day_idx"] = density_idx[0]
-
+        # Check that there are no NaN values in the output
+        for key, value in output_aggregate.items():
+            if np.isnan(value):
+                return {}
         return output_aggregate
 
     def aggregate_time_resolution(
@@ -161,6 +164,11 @@ class Aggregator(object):
             }
             # Aggregate the filtered data
             aggregated_step = self.aggregate(filtered_data)
+            if len(aggregated_step) == 0:
+                # If the aggregated step is empty then it has NaN values
+                # and should be skipped
+                start_time = time_arr[end_idx]
+                continue
             # Store the aggregated step
             agg_list = []
             target_idx.append(aggregated_step["density_day_idx"])
