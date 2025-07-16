@@ -1,10 +1,8 @@
-save_models:
-  # type: local
-  # save_dir: output
+save_models: 
   type: HTTPServer
   url: http://localhost:4000/
-  write_token: "SEC"
-  read_token: "RET"
+  write_token: 'SEC'
+  read_token: 'RET'
 density_profile: additional_files/density_temp_height.json
 logging:
   enabled: true
@@ -12,7 +10,7 @@ logging:
   file: false
   logging_level: DEBUG
   log_output: ./data/logs/
-query: 'from(bucket: "logicmelt") |> range(start: -30d)        |> filter(fn: (r) => r["_measurement"] == "particle")'
+query: "from(bucket: \"logicmelt\") |> range(start: -30d)        |> filter(fn: (r) => r[\"_measurement\"] == \"particle\")"
 influxdb:
   url: http://localhost:8086
   token: logicmelt
@@ -23,7 +21,7 @@ aggregator:
   type: "raw"
   time_resolution: 60 # seconds
 train_params:
-  n_jobs: 1
+  n_jobs: -1
   scoring: ["r2", "neg_mean_squared_error"]
   cv: 5
   n_iter: 100
