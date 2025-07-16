@@ -63,6 +63,7 @@ class Job:
         self.train_data, self.test_data = self.train_test_split(
             self.config.train_params.train_split
         )
+        self.logger.info(f"Training set size: {self.train_data.shape}")
         # Get the targets ready for training
         self.target_arr = self.get_targets(self.train_idx)
         self.test_arr = self.get_targets(self.test_idx)
