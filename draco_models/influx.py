@@ -1,8 +1,12 @@
-import influxdb_client
-import influxdb_client.client.flux_table
-import numpy as np
 from typing import Any
 from collections import defaultdict
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+import influxdb_client
+import influxdb_client.client.flux_table
+
 from draco_models.config import InfluxDBConfig
 
 
@@ -15,7 +19,9 @@ class InfluxDB:
         Args:
             config (InfluxDBConfig): Configuration for connecting to the InfluxDB instance.
         """
-        self.client = influxdb_client.InfluxDBClient(url=config.url, token=config.token, org=config.org)  # type: ignore
+        self.client = influxdb_client.InfluxDBClient(
+            url=config.url, token=config.token, org=config.org
+        )  # type: ignore
         self.org = config.org
         self.query_apy = self.client.query_api()
 
@@ -39,6 +45,73 @@ class InfluxDB:
         query_out = self.query_apy.query(query=query, org=self.org)
         parsed_query = self.parse_data(query_out, columns_in, columns_out)
         return parsed_query
+
+    def custom_query2(
+        self,
+        query: str,
+        columns_in: list[str] | str = "",
+        columns_out: list[str] | str = "",
+    ) -> Any:
+        """
+        Execute a custom query against the InfluxDB instance.
+
+        Args:
+            query (str): The InfluxQL or Flux query to execute.
+            columns_in (list[str]): List of columns to include in the parsed output. If empty, all columns are included.
+            columns_out (list[str]): List of columns to exclude from the parsed output. If empty, no columns are excluded.
+
+        Returns:
+            Any: The result of the query.
+        """
+
+        result = self.query_apy.query_raw(query, org=self.org)
+
+        df = pd.read_csv(result, skiprows=[0, 1, 2])
+        df.drop(
+            [
+                "Unnamed: 0",
+                "result",
+                "table",
+                "_start",
+                "_stop",
+                "_measurement",
+            ],
+            axis=1,
+            inplace=True,
+        )  # customize as needed
+        df["timestamp"] = df["_time"]
+        df.set_index("_time", inplace=True)
+        df.sort_index(inplace=True)
+
+        output = {}
+        for c in df.columns:
+            if c in [
+                "EventID",
+                "Particle",
+                "ParticleID",
+                "TrackID",
+                "density_day_idx",
+                "latitude",
+                "local_time",
+                "longitude",
+                "phi",
+                "process_ID",
+                "px",
+                "py",
+                "pz",
+                "start_time",
+                "theta",
+                "x",
+                "y",
+                "z",
+                "timestamps",
+            ]:
+                output[c] = list(df[c])
+
+        timestamps = [datetime.fromisoformat(t).timestamp() for t in df["timestamp"]]
+        output["timestamps"] = timestamps
+
+        return output
 
     def parse_data(
         self,
@@ -94,9 +167,9 @@ class InfluxDB:
         timestamps_out = [t.timestamp() for t in timestamps]
         output_len = len(output[list(output.keys())[0]]) if len(output) > 0 else 0
         # Sanity check: ensure that the number of timestamps matches the number of values in the output
-        assert (
-            len(timestamps_out) == output_len
-        ), "The number of timestamps does not match the number of values in the output."
+        assert len(timestamps_out) == output_len, (
+            "The number of timestamps does not match the number of values in the output."
+        )
         if output_len == 0:
             return {}
         # Sort the timestamps if needed

@@ -10,7 +10,7 @@ logging:
   file: false
   logging_level: DEBUG
   log_output: ./data/logs/
-query: 'from(bucket: "logicmelt") |> range(start: -30d)        |> filter(fn: (r) => r["_measurement"] == "particle")'
+query: 'from(bucket: "logicmelt") |> range(start: -30d) |> filter(fn: (r) => r["_measurement"] == "particle") |> filter(fn: (r) => r["detector_type"] == "virtual") |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value") |> group()'
 influxdb:
   url: http://localhost:8086
   token: logicmelt

@@ -36,7 +36,7 @@ class Job:
         # Get the data from InfluxDB using the provided query and columns.
         self.influxdb = InfluxDB(config.influxdb)
         self.logger.info("Fetching data from InfluxDB...")
-        self.data = self.influxdb.custom_query(
+        self.data = self.influxdb.custom_query2(
             config.query,
             config.influxdb.columns_in,
             config.influxdb.columns_out,
