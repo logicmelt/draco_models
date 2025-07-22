@@ -15,8 +15,6 @@ influxdb:
   url: http://localhost:8086
   token: logicmelt
   org: logicmelt
-  columns_in: [""]
-  columns_out: ["multiplicity"]
 aggregator:
   type: "raw"
   time_resolution: 60 # seconds

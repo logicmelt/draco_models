@@ -85,6 +85,7 @@ class SaveHttpConfig(BaseSettings):
         description="The authentication token to write to the server. It will be added to the request headers.",
     )
 
+
 class SaveLocalConfig(BaseSettings):
     """Configuration for saving models locally."""
 
@@ -110,13 +111,6 @@ class InfluxDBConfig(BaseSettings):
     )
     org: str = pydantic.Field(
         default="logicmelt", description="The organization name in InfluxDB."
-    )
-    columns_in: list[str] = pydantic.Field(
-        default=[""],
-        description="List of columns to include in the parsed output. Leave empty to include all columns.",
-    )
-    columns_out: list[str] = pydantic.Field(
-        default=[""], description="List of columns to exclude from the parsed output."
     )
 
 
