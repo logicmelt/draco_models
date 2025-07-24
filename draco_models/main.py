@@ -3,6 +3,7 @@ import argparse
 import sys
 import apscheduler.schedulers.background
 import apscheduler.triggers.cron
+from draco_models.utils import create_logger
 from draco_models.config import load_config, InputConfig
 
 
@@ -45,8 +46,16 @@ def cli_entrypoint():
     config = load_config(args.config)
     # Validate the configuration
     input_config = InputConfig(**config)
+    # Set up the logger
+    logger = create_logger("draco_trainer", input_config.logging)
+    apscheduler_log = create_logger(
+        'apscheduler', input_config.logging
+    )  # Create a logger for APScheduler 
     # Run the main function with the validated configuration
     if len(input_config.cron_schedule) != 0:
+        logger.info(
+            f"Cron schedule detected, setting up periodic training with cron expression: {input_config.cron_schedule}."
+        )
         # Get a scheduler instance and a Cron trigger from the configuration
         scheduler = apscheduler.schedulers.background.BlockingScheduler()
         trigger = apscheduler.triggers.cron.CronTrigger.from_crontab(
