@@ -1,6 +1,8 @@
 import draco_models.job
 import argparse
 import sys
+import apscheduler.schedulers.background
+import apscheduler.triggers.cron
 from draco_models.config import load_config, InputConfig
 
 
@@ -44,7 +46,20 @@ def cli_entrypoint():
     # Validate the configuration
     input_config = InputConfig(**config)
     # Run the main function with the validated configuration
-    main(input_config)
+    if len(input_config.cron_schedule) != 0:
+        # Get a scheduler instance and a Cron trigger from the configuration
+        scheduler = apscheduler.schedulers.background.BlockingScheduler()
+        trigger = apscheduler.triggers.cron.CronTrigger.from_crontab(
+            input_config.cron_schedule
+        )
+        # Schedule the main function to run periodically based on the cron schedule limited to one instance
+        scheduler.add_job(
+            main, trigger, args=[input_config], id="draco_trainer", max_instances=1
+        )
+        scheduler.start()
+    else:
+        # If no cron schedule is provided, run the main function
+        main(input_config)
 
 
 if __name__ == "__main__":

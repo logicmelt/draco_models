@@ -4,6 +4,7 @@ save_models:
   write_token: "SEC"
   read_token: "RET"
 density_profile: additional_files/density_temp_height.json
+cron_schedule: "* * * * *" # Cron expresion for scheduling the training pipeline
 logging:
   enabled: true
   console: true

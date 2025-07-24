@@ -192,6 +192,10 @@ class InputConfig(BaseSettings):
         default_factory=LoggingConfig,
         description="Configuration for the logging system.",
     )
+    cron_schedule: str = pydantic.Field(
+        default="",
+        description="Cron expression for scheduling the training pipeline.",
+    )
     influxdb: InfluxDBConfig = pydantic.Field(
         default_factory=InfluxDBConfig,
         description="Configuration for connecting to the InfluxDB instance.",

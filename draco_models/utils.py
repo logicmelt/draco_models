@@ -27,6 +27,9 @@ def create_logger(name: str, log_config: LoggingConfig) -> logging.Logger:
     level_log = LOGGER_LEVEL[log_config.logging_level.upper()]
     # Create the logger and set it to the desired level
     logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        # If the logger already has handlers, return it
+        return logger
     logger.setLevel(level_log)
     # Output file and log format
     FORMAT = logging.Formatter(
