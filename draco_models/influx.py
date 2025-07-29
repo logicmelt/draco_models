@@ -20,7 +20,7 @@ class InfluxDB:
             config (InfluxDBConfig): Configuration for connecting to the InfluxDB instance.
         """
         self.client = influxdb_client.InfluxDBClient(
-            url=config.url, token=config.token, org=config.org
+            url=config.url, token=config.token, org=config.org, timeout=3600_000
         )  # type: ignore
         self.org = config.org
         self.query_apy = self.client.query_api()
