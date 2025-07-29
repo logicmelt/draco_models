@@ -1,6 +1,6 @@
 [project]
 name = "draco-models"
-version = "0.1.0"
+version = "1.0.0"
 description = "Machine learning models for anomaly detection and atmospheric temperature regression"
 authors = [
     {name = "Alexis Menendez Vazquez",email = "alexis.menendez@logicmelt.com"}
